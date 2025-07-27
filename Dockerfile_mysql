@@ -1,0 +1,14 @@
+FROM mysql:5.7
+
+LABEL maintainer="AzureDevSecOps-July2025"
+LABEL environment="Classroom"
+
+ENV MYSQL_ROOT_PASSWORD=StrongPassword123
+ENV MYSQL_DATABASE=wordpress
+ENV MYSQL_USER=wordpress
+ENV MYSQL_PASSWORD=StrongPassword123
+
+# Add custom init script
+COPY src/init.sql /docker-entrypoint-initdb.d/init.sql
+VOLUME /var/lib/mysql
+EXPOSE 3306
