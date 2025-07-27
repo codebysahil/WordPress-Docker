@@ -1,0 +1,20 @@
+docker image build -t mysql:v1 -f Dockerfile.mysql .
+
+docker image build -t wp:v1 -f dockerfile_wp .
+
+docker network create \
+  --driver bridge \
+  --subnet 10.100.0.0/16 \
+  --gateway 10.100.0.1 \
+  wp-net
+
+  docker run -d \
+  --name mysql-db \
+  --network wp-net \
+  -v /root/mysql-data:/var/lib/mysql \
+   mysql:v1
+
+docker run -d   --name mysql-db   --network wp-net   -v /root/mysql-data:/var/lib/mysql   mysql:v1
+
+
+docker run -d   --name wp01   --network wp-net -p 8080:80 wp:v1
