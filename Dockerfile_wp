@@ -1,0 +1,56 @@
+ARG OS_VERSION="24.04"
+FROM ubuntu:${OS_VERSION}
+
+LABEL maintainer="AzureDevSecOps-June2025"
+LABEL environment="ClassRoom"
+
+ENV DB_USERNAME=hidden
+ENV DB_PASSWORD=StrongPassword123
+ENV DB_HOST=mysql-db
+
+RUN apt-get update && apt-get install -y \
+    apache2 \
+    ghostscript \
+    libapache2-mod-php \
+    mysql-server \
+    php \
+    php-bcmath \
+    php-curl \
+    php-imagick \
+    php-intl \
+    php-json \
+    php-mbstring \
+    php-mysql \
+    php-xml \
+    php-zip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /srv/www && chown -R www-data:www-data /srv/www
+
+USER www-data
+RUN curl https://wordpress.org/latest.tar.gz | tar zx -C /srv/www
+
+USER root
+
+# Configure wp-config.php
+RUN cp /srv/www/wordpress/wp-config-sample.php /srv/www/wordpress/wp-config.php && \
+    sed -i "s/database_name_here/wordpress/" /srv/www/wordpress/wp-config.php && \
+    sed -i "s/username_here/wordpress/" /srv/www/wordpress/wp-config.php && \
+    sed -i "s/password_here/${DB_PASSWORD}/" /srv/www/wordpress/wp-config.php && \
+    sed -i "s/localhost/${DB_HOST}/" /srv/www/wordpress/wp-config.php && \
+    curl -s https://api.wordpress.org/secret-key/1.1/salt/ > /tmp/wp-keys && \
+    sed -i '/AUTH_KEY/d;/SECURE_AUTH_KEY/d;/LOGGED_IN_KEY/d;/NONCE_KEY/d;/AUTH_SALT/d;/SECURE_AUTH_SALT/d;/LOGGED_IN_SALT/d;/NONCE_SALT/d' /srv/www/wordpress/wp-config.php && \
+    awk '/@since 2.6.0/ { print; system("cat /tmp/wp-keys"); next }1' /srv/www/wordpress/wp-config.php > /tmp/wp-config-new.php && \
+    mv /tmp/wp-config-new.php /srv/www/wordpress/wp-config.php && \
+    rm /tmp/wp-keys
+
+# Apache config
+COPY src/wordpress.conf /etc/apache2/sites-available/wordpress.conf
+RUN a2ensite wordpress.conf && \
+    a2enmod rewrite && \
+    a2dissite 000-default.conf && \
+    apache2ctl configtest
+
+EXPOSE 80
+CMD ["apachectl", "-D", "FOREGROUND"]
